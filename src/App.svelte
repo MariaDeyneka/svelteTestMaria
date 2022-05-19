@@ -5,55 +5,46 @@
   const people = writable(mockedData);
   let result;
   let isFocused = false;
-  const history =
-    localStorage.getItem("history") !== null
-      ? JSON.parse(localStorage.getItem("history"))
-      : [];
-  const some = writable(history);
-  const getHistory = () => {
-    let existingItem = localStorage.getItem("history");
-    return JSON.parse(existingItem);
-  };
+  const history = JSON.parse(localStorage.getItem("history")) ?? [];
+  const historyStream = writable(history);
+
   const inputHistory = () => {
     const value = document.getElementById("person-search").value;
-    history.push(value);
-    localStorage.setItem("history", JSON.stringify(history));
-    window.location.reload();
+	if(value && value.length>20){
+		history.push(value);
+		localStorage.setItem("history", JSON.stringify(history));
+		window.location.reload();
+	}
   };
 
   const onFocus = () => (isFocused = true);
   const onBlur = () => (isFocused = false);
-  const checkIfThree = () => {
+  const checkLength = () => {
     const word = document.getElementById("person-search");
     result = word?.value?.length >= 2;
   };
 
   let opened = false;
-  const onOpen = (some) => {
-	  console.log(some === history[history.length-1]);
-	  if (some === history[history.length-1]){
-		lastPersonData()
-		return  opened = true;
-	  }
-	  opened = false;
-	  
+  const onOpen = (lastHistoryElement) => {
+    if (lastHistoryElement === history[history.length - 1]) {
+      lastPersonData();
+      opened = true;
+    } else opened = false;
   };
-  const onClose = () => (opened = false);
+  const onClose = () => {
+    opened = false;
+  };
   let userData = {};
   const lastPersonData = () => {
-	console.log(history[history.length-1]?.split(' ')[2]);
-	  mockedData.forEach(element => {
-		
-			if(element.id === history[history.length-1]?.split(' ')[2]) {
-				console.log(history[history.length-1]?.split(' ')[2]);
-				return userData = element
-			}
-		});
-  }
-  console.log(lastPersonData());
+    mockedData.forEach((element) => {
+      if (element.id === history[history.length - 1]?.split(" ")[2]) {
+        userData = element;
+      }
+    });
+  };
 </script>
 
-<svelte:window on:keydown={checkIfThree} />
+<svelte:window on:keydown={checkLength} />
 <div class="flex flex-row justify-between items-center px-9">
   <div class="space-y-1">
     <span class="burger" />
@@ -61,7 +52,7 @@
     <span class="burger" />
   </div>
   <!-- svelte-ignore a11y-img-redundant-alt -->
-  <img src="images/main-icon.png" alt="header-image" />
+  <img src="images/main-icon.png" alt="logo-image" />
   <form class="flex items-center w-2/4">
     <label for="voice-search" class="sr-only">Search</label>
     <div class="relative w-full">
@@ -78,13 +69,13 @@
       />
 
       {#if result}
-        <datalist id="mocked-data">
-          {#each $people as person}
-            <option
-              >{person.first_name} {person.last_name} {person.id} {person.relationship}</option
-            >
-          {/each}
-        </datalist>
+	  <datalist id="mocked-data">
+		{#each $people as person}
+		  <option
+			>{person.first_name} {person.last_name} {person.id} {person.relationship}</option
+		  >
+		{/each}
+	  </datalist>
       {/if}
     </div>
   </form>
@@ -99,15 +90,15 @@
     ? "history_search pt-4 pl-4 pr-4 absolute shadow-xl h-auto flex flex-row"
     : "hidden"}
 >
-  {#if some}
+  {#if historyStream}
     <div class="flex flex-col w-3/5">
-      {#each [...$some].reverse() as history}
+      {#each [...$historyStream].reverse() as history}
         <p>{history?.split(" ")[3]}</p>
 
         <div class="flex flex-row justify-between items-center pb-4">
           <p class="flex flex-row justify-between items-center">{history}</p>
 
-          {#if history?.split(" ")[0] === $some[$some.length - 2]?.split(" ")[0] || history?.split(" ")[0] === $some[$some.length - 1]?.split(" ")[0]}
+          {#if history?.split(" ")[0] === $historyStream[$historyStream.length - 2]?.split(" ")[0] || history?.split(" ")[0] === $historyStream[$historyStream.length - 1]?.split(" ")[0]}
             <button
               class="border rounded-md w-20 border-lime-300 bg-lime-300 text-lime-800"
               >new</button
@@ -126,14 +117,16 @@
       {/each}
     </div>
   {/if}
-  {#if some}
-    <div class={opened ? "w-2/5" : "hidden"}>
+  {#if historyStream}
+    <div class={opened ? "w-2/5 pb-4" : "hidden"}>
       <div class="flex flex-col">
-        <div class="flex flex-row">
-	      <!-- svelte-ignore a11y-missing-attribute -->
-	      <!-- <img src={`images/profile_pics/small/${userData.avatar}`}> -->
-          {userData.first_name}
-          {userData.last_name}
+        <div class="flex flex-col items-center justify-center">
+          <!-- svelte-ignore a11y-missing-attribute -->
+          <img
+            class="w-20 border rounded-full"
+            src={`images/profile_pics/small/${userData.avatar}`}
+          />
+          <p>{userData.first_name} {userData.last_name}</p>
           {userData.id}
         </div>
         <hr />
@@ -144,15 +137,25 @@
             <li>Email: {userData.email_address}</li>
           </ul>
         </div>
-    	<div class="flex flex-row justify-evenly w-full">
-			<!-- svelte-ignore a11y-img-redundant-alt -->
-			<button class="icons-button"><img src="static/chat.svg" alt="chat-icon" class="w-5" /></button>
-			<!-- svelte-ignore a11y-img-redundant-alt -->
-			<button class="icons-button"><img src="images/phone.svg" alt="phone-icon" class="w-5" /></button>
-			<!-- svelte-ignore a11y-img-redundant-alt -->
-			<button class="icons-button"><img src="images/location.svg" alt="location-icon" class="w-5" /></button>
-     	 </div>
-	  </div>
+        <div class="flex flex-row justify-evenly w-full mt-4">
+          <!-- svelte-ignore a11y-img-redundant-alt -->
+          <button class="icons-button"
+            ><img src="images/chat.svg" alt="chat-icon" class="w-5" /></button
+          >
+          <!-- svelte-ignore a11y-img-redundant-alt -->
+          <button class="icons-button"
+            ><img src="images/phone.svg" alt="phone-icon" class="w-5" /></button
+          >
+          <!-- svelte-ignore a11y-img-redundant-alt -->
+          <button class="icons-button"
+            ><img
+              src="images/location.svg"
+              alt="location-icon"
+              class="w-5"
+            /></button
+          >
+        </div>
+      </div>
     </div>
   {/if}
 </div>
@@ -161,8 +164,8 @@
   .burger {
     @apply block w-8 h-1 bg-gray-500 rounded-md;
   }
-  .icons-button{
-	  @apply border rounded-full bg-gray-300 w-8 h-8 flex items-center justify-center;
+  .icons-button {
+    @apply border rounded-full bg-gray-300 w-8 h-8 flex items-center justify-center;
   }
   input[type="search"]::-webkit-search-cancel-button {
     -webkit-appearance: searchfield-cancel-button;
@@ -172,7 +175,7 @@
   }
   .history_search {
     width: 48%;
-    left: 33.5rem;
+    left: 33.6rem;
     top: 4.3rem;
   }
   .text {
